@@ -13,8 +13,9 @@ when isMainModule:
   # b[3] = piece.piece(PieceType.knight, PieceColor.white)
   # echo $b
 
-  var g = game.fromFen("rnbqkbnr/pppppppp/8/8/8/4pP2/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+  var g = game.fromFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
   echo $g.board
   var moves = g.generate_moves()
+  echo $moves
   for move in moves:
     echo $move

@@ -18,7 +18,7 @@ proc row *(position: Position): int {.inline.} =
     # NOTE:not the rank!
     return int(position / BOARD_WIDTH)
 
-const FILES = toSeq('a'..char(ord('a') + BOARD_WIDTH))
+const FILES* = toSeq('a'..char(ord('a') + BOARD_WIDTH - 1))
 proc repr *(position: Position): string =
     let col = column(position)
     let row = row(position)
@@ -26,9 +26,17 @@ proc repr *(position: Position): string =
 
 proc `$` *(board: Board): string =
     var output = ""
+    output.add("   ")
+    for file_letter in FILES:
+        output.add(file_letter)
+    output.add("\n")
     for i, piece in board:
         if i > 0 and i mod BOARD_WIDTH == 0:
             output.add("\n")
+        if i mod BOARD_WIDTH == 0:
+            output.add($(BOARD_HEIGHT - row(i)))
+            output.add("  ")
+
         let piece_repr = $piece
         output.add(piece_repr)
     return output

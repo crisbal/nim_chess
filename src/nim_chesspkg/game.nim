@@ -38,6 +38,17 @@ type Move* = tuple
 proc `$` *(move: Move): string =
     return $move.piece & "-" & move.source.repr() & "-" & move.target.repr()
 
+proc `$` *(moves: seq[Move]): string = 
+    var output = ""
+    var attackBoard: array[BOARD_WIDTH * BOARD_HEIGHT, int]
+    for move in moves:
+        attackBoard[move.target] = 1
+    for i in 0..attackBoard.high:
+        if i > 0 and i mod BOARD_WIDTH == 0:
+            output.add("\n")
+        output.add(if attackBoard[i] == 1: 'x' else: '.')
+    return output
+
 const FRONT = -board.BOARD_WIDTH
 const BACK = -FRONT
 const LEFT = -1
@@ -59,27 +70,30 @@ proc generate_moves *(game: Game): seq[Move] =
 
         var DIRECTION = 1
         if color(piece) == PieceColor.black:
-            # if black, movement is reversed for pawns
+            # movement is reversed for pawns
             DIRECTION = -1
-
         if type(piece) == PieceType.pawn:
             let singlePawnMovement = FRONT*DIRECTION
-            # TODO add boundary check
+            var destination = position+singlePawnMovement
+            if not (destination in game.board.low..game.board.high):
+                continue
 
             if type(game.board[position+singlePawnMovement]) != PieceType.none:
                 continue
             moves.add((piece, position, position+singlePawnMovement))
 
             # only for pawn on 2nd and 2nd-last row
-            if (color(piece) == PieceColor.white and row(position) ==
-                    board.BOARD_WIDTH - 2) or (color(piece) ==
-                    PieceColor.black and row(position) == 1):
+            if (color(piece) == PieceColor.white and row(position) == board.BOARD_WIDTH - 2) or (color(piece) == PieceColor.black and row(position) == 1):
                 let doublePawnMovement = 2*FRONT*DIRECTION
+                var destination = position+doublePawnMovement
+                # this will never happen, probably?
+                if not (destination in game.board.low..game.board.high):
+                    continue
                 if type(game.board[position+doublePawnMovement]) != PieceType.none:
                     continue
                 moves.add((piece, position, position+doublePawnMovement))
 
-        if type(piece) == PieceType.knight:
+        elif type(piece) == PieceType.knight:
             # . X . X .
             # X . . . X
             # . . N . .
@@ -93,7 +107,12 @@ proc generate_moves *(game: Game): seq[Move] =
             ]
             for knightMovement in knightMovements:
                 # out of bounds
-                if position+knightMovement < 0 or position+knightMovement >= len(game.board):
+                if not (position+knightMovement in game.board.low..game.board.high):
+                    continue
+                
+                if abs(column(position)-column(position+knightMovement)) > 2:
+                    # make sure we don't jump from one side to the other
+                    # this happens because of the board representation we have chosen
                     continue
 
                 # take move
@@ -105,27 +124,108 @@ proc generate_moves *(game: Game): seq[Move] =
                 # movement move
                 moves.add((piece, position, position+knightMovement))
 
-
-        if type(piece) == PieceType.rook:
+        elif type(piece) == PieceType.rook:
             for movement in [FRONT, BACK, LEFT, RIGHT]:
-                var times = 1
+                # simulate sliding
+                var slidingPosition = position
                 while true:
-                    let rookMovement = movement*times
-                    if position+rookMovement < 0 or position+rookMovement >= len(game.board):
+                    var destination =  slidingPosition + movement
+
+                    if not (destination in game.board.low..game.board.high):
                         break
 
-                    # take move
-                    if type(game.board[position+rookMovement]) != PieceType.none:
+                    if abs(column(slidingPosition)-column(destination)) > 1:
+                        # make sure we don't move up a row based on left/right movement (aka wrap around)
+                        # this happens because of the board representation we have chosen
+                        break
+
+                    # capture move?
+                    if type(game.board[destination]) != PieceType.none:
                         # can only take a different color
-                        if color(piece) == color(game.board[position+rookMovement]):
+                        if color(piece) == color(game.board[destination]):
                             break
                         else:
                             # take and stop
-                            moves.add((piece, position, position+rookMovement))
+                            moves.add((piece, position, destination))
                             break
 
-                    moves.add((piece, position, position+rookMovement))
+                    moves.add((piece, position, destination))
+                    slidingPosition = destination
+        
+        elif type(piece) == PieceType.bishop:
+            for movement in [FRONT+LEFT, FRONT+RIGHT, BACK+LEFT, BACK+RIGHT]:
+                # simulate sliding
+                var slidingPosition = position
+                while true:
+                    var destination =  slidingPosition + movement
+                    if not (destination in game.board.low..game.board.high):
+                        break
+                    
+                    if abs(column(slidingPosition)-column(destination)) > 1:
+                        # make sure we don't move up a row based on left/right movement (aka wrap around)
+                        # this happens because of the board representation we have chosen
+                        break
+
+                    # capture move?
+                    if type(game.board[destination]) != PieceType.none:
+                        # can only take a different color
+                        if color(piece) == color(game.board[destination]):
+                            break
+                        else:
+                            # take and stop
+                            moves.add((piece, position, destination))
+                            break
+
+                    moves.add((piece, position, destination))
+                    slidingPosition = destination
 
 
+        elif type(piece) == PieceType.queen:
+            for movement in [FRONT, BACK, LEFT, RIGHT, FRONT+LEFT, FRONT+RIGHT, BACK+LEFT, BACK+RIGHT]:
+                var slidingPosition = position
+                while true:
+                    var destination =  slidingPosition + movement
+                    if not (destination in game.board.low..game.board.high):
+                        break
+                    
+                    if abs(column(slidingPosition)-column(destination)) > 1:
+                        # make sure we don't move up a row based on left/right movement (aka wrap around)
+                        # this happens because of the board representation we have chosen
+                        break
+
+                    # capture move?
+                    if type(game.board[destination]) != PieceType.none:
+                        # can only take a different color
+                        if color(piece) == color(game.board[destination]):
+                            break
+                        else:
+                            # take and stop
+                            moves.add((piece, position, destination))
+                            break
+
+                    moves.add((piece, position, destination))
+                    slidingPosition = destination
+
+        elif type(piece) == PieceType.king:
+            for movement in [FRONT, BACK, LEFT, RIGHT]:
+                var destination = position+movement
+                if not (destination in game.board.low..game.board.high):
+                    break
+                
+                if abs(column(position)-column(destination)) > 1:
+                    # make sure we don't move up a row based on left/right movement (aka wrap around)
+                    # this happens because of the board representation we have chosen
+                    break
+
+                # take move
+                if type(game.board[position+movement]) != PieceType.none:
+                    # can only take a different color
+                    if color(piece) == color(game.board[position+movement]):
+                        continue
+                    else:
+                        moves.add((piece, position, position+movement))
+                        continue
+
+                moves.add((piece, position, position+movement))
 
     return moves
