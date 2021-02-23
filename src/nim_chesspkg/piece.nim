@@ -1,5 +1,6 @@
 import tables
 import bitops
+import strutils
 
 type Piece* = uint8
 

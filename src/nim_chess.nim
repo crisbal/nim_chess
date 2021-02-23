@@ -2,7 +2,6 @@
 # uses this file as the main entry point of the application.
 
 import nim_chesspkg/board
-import nim_chesspkg/piece
 import nim_chesspkg/game
 
 when isMainModule:
@@ -15,7 +14,7 @@ when isMainModule:
 
   var g = game.fromFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
   echo $g.board
-  var moves = g.generate_moves()
+  let moves = generate_pseudolegal_moves(g.board, g.turn)
   echo $moves
   for move in moves:
     echo $move
