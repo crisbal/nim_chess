@@ -85,6 +85,8 @@ type Move* = tuple
 
 proc moveFromString* (repr: string): Move =
     var parts = repr.split("-")
+    assert len(parts) == 2
+    return (positionFromString(parts[0]), positionFromString(parts[1]))
 
 proc `$` *(move: Move): string =
     return move.source.repr() & "-" & move.target.repr()

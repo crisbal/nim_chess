@@ -50,3 +50,12 @@ suite "position":
     check positionFromString("h1") == Position((BOARD_HEIGHT*BOARD_WIDTH)-1)
     check repr(positionFromString("g3")) == "g3"
     check repr(positionFromString("f1")) == "f1"
+
+suite "move":
+  test "move to string":
+    check $(positionFromString("a8"), positionFromString("b8")) == "a8-b8"
+    check $(positionFromString("a1"), positionFromString("f4")) == "a1-f4"
+  
+  test "move from string":
+    check moveFromString("a8-h1") == (positionFromString("a8"), positionFromString("h1"))
+    check moveFromString("f8-b3") == (positionFromString("f8"), positionFromString("b3"))
