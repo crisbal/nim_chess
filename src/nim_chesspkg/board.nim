@@ -103,6 +103,24 @@ proc `$` *(moves: seq[Move]): string =
         output.add(if attackBoard[i] == 1: 'x' else: '.')
     return output
 
+const pieceValues = {
+    PieceType.pawn: 100,
+    PieceType.knight: 300,
+    PieceType.bishop: 350,
+    PieceType.rook: 500,
+    PieceType.queen: 900,
+    PieceType.king: 30000,
+}.toTable
+
+proc evaluate *(board: Board): int =
+    result = 0
+    for piece in board:
+        if type(piece) == PieceType.none:
+            continue
+        let sign = if color(piece) == PieceColor.white: 1 else: -1
+        result += pieceValues.getOrDefault(type(piece), 0) * sign
+    return result
+
 const FRONT = -board.BOARD_WIDTH
 const BACK = -FRONT
 const LEFT = -1
@@ -323,4 +341,3 @@ proc isChecked *(board: Board, color: PieceColor): bool =
     let attackerMoves = generateMoves(board, attacker, onlyCaptures=true)
     # if any valid move targets the king
     return attackerMoves.anyIt(it.target == kingPosition)
-
