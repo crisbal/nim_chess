@@ -4,6 +4,7 @@ import tables
 
 import piece
 
+const STARTING_PIECES_FEM* = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"
 
 const BOARD_WIDTH* = 8
 const BOARD_HEIGHT* = 8
@@ -56,7 +57,7 @@ proc empty *(): Board =
         board[i] = ord(PieceType.none)
     return board
 
-proc from_fem_piece_placement *(piece_placement: string): Board =
+proc fromFemPiecePlacement *(piece_placement: string): Board =
     var b = empty()
     let ranks = piece_placement.split("/")
     var i = 0
@@ -107,8 +108,7 @@ const BACK = -FRONT
 const LEFT = -1
 const RIGHT = -LEFT
 
-
-proc generate_pseudolegal_moves *(board: Board, turnColor: PieceColor): seq[Move] =
+proc generatePseudolegalMoves *(board: Board, turnColor: PieceColor): seq[Move] =
     var moves: seq[Move] = @[]
     for position, piece in board:
         if type(piece) == PieceType.none:
@@ -117,6 +117,7 @@ proc generate_pseudolegal_moves *(board: Board, turnColor: PieceColor): seq[Move
             continue
 
         if type(piece) == PieceType.pawn:
+            # TODO Enpassant
             var DIRECTION = 1
             if color(piece) == PieceColor.black:
                 # movement is reversed for pawns
@@ -143,11 +144,12 @@ proc generate_pseudolegal_moves *(board: Board, turnColor: PieceColor): seq[Move
                 moves.add((position, position+doublePawnMovement))
             
             # take moves
-            if color(board[position+FRONT*DIRECTION+LEFT]) != color(piece):
+            if type(board[position+FRONT*DIRECTION+LEFT]) != PieceType.none and color(board[position+FRONT*DIRECTION+LEFT]) != color(piece):
                 moves.add((position, position+FRONT*DIRECTION+LEFT))
 
-            if color(board[position+FRONT*DIRECTION+RIGHT]) != color(piece):
+            if type(board[position+FRONT*DIRECTION+RIGHT]) != PieceType.none and color(board[position+FRONT*DIRECTION+RIGHT]) != color(piece):
                 moves.add((position, position+FRONT*DIRECTION+RIGHT))
+
 
         elif type(piece) == PieceType.knight:
             # . X . X .
@@ -263,7 +265,8 @@ proc generate_pseudolegal_moves *(board: Board, turnColor: PieceColor): seq[Move
                     slidingPosition = destination
 
         elif type(piece) == PieceType.king:
-            for movement in [FRONT, BACK, LEFT, RIGHT]:
+            # TODO Castling
+            for movement in [FRONT, BACK, LEFT, RIGHT, FRONT+LEFT, FRONT+RIGHT, BACK+LEFT, BACK+RIGHT]:
                 var destination = position+movement
                 if not (destination in board.low..board.high):
                     break
@@ -285,3 +288,39 @@ proc generate_pseudolegal_moves *(board: Board, turnColor: PieceColor): seq[Move
                 moves.add((position, position+movement))
 
     return moves
+
+proc playMove *(board: Board, move: Move): Board =
+    var new_board: Board
+    new_board.shallowCopy(board)
+    new_board[move.target] = new_board[move.source]
+    new_board[move.source] = 0
+    return new_board
+
+proc findKing *(board: Board, color: PieceColor): Position =
+    for position, piece in board:
+        if type(piece) == PieceType.king and color(piece) == color:
+            return position
+
+proc isCapture *(board: Board, move: Move): bool =
+    return type(board[move.target]) != PieceType.none
+
+proc isChecked *(board: Board, color: PieceColor): bool
+
+proc generateMoves *(board: Board, color: PieceColor, onlyCaptures: bool = false): seq[Move] =
+    let moves = generatePseudolegalMoves(board, color)
+    var validMoves: seq[Move] = @[]
+    for move in moves:
+        if onlyCaptures and not isCapture(board, move):
+            continue
+        let new_board = playMove(board, move)
+        if not isChecked(new_board, color):
+          validMoves.add(move)
+    return validMoves
+
+proc isChecked *(board: Board, color: PieceColor): bool =
+    let attacker = !color
+    let kingPosition = findKing(board, color)
+    let attackerMoves = generateMoves(board, attacker, onlyCaptures=true)
+    # if any valid move targets the king
+    return attackerMoves.anyIt(it.target == kingPosition)
+

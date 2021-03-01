@@ -45,3 +45,9 @@ proc `$` *(piece: Piece): string =
             return type_to_symbol_white.getOrDefault(piece.type(), "?")
         else:
             return type_to_symbol_black.getOrDefault(piece.type(), "?")
+
+proc `!` *(pieceColor: PieceColor): PieceColor =
+    if pieceColor == PieceColor.white:
+        return PieceColor.black
+    else:
+        return PieceColor.white

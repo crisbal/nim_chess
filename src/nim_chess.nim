@@ -12,9 +12,14 @@ when isMainModule:
   # b[3] = piece.piece(PieceType.knight, PieceColor.white)
   # echo $b
 
-  var g = game.fromFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+  var g = game.fromFen("8/8/1q3q2/8/3B4/8/5K2/8 w - - 0 1")
   echo $g.board
-  let moves = generate_pseudolegal_moves(g.board, g.turn)
+  #[ let moves = generatePseudolegalMoves(g.board, g.turn)
   echo $moves
   for move in moves:
+    echo $move ]#
+  
+  let validMoves = generateMoves(g.board, g.turn)
+  echo $validMoves
+  for move in validMoves:
     echo $move
