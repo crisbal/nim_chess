@@ -29,8 +29,8 @@ proc positionFromString *(repr: string): Position =
     assert len(repr) == 2
     assert isLowerAscii(repr[0])
     assert isDigit(repr[1])
-    var file = ord(repr[0]) - ord('a') 
-    var rank = ord(repr[1]) - ord('0') 
+    var file = ord(repr[0]) - ord('a')
+    var rank = ord(repr[1]) - ord('0')
     return Position((BOARD_HEIGHT - rank)*BOARD_WIDTH + file)
 
 
@@ -92,7 +92,7 @@ proc moveFromString* (repr: string): Move =
 proc `$` *(move: Move): string =
     return move.source.repr() & "-" & move.target.repr()
 
-proc `$` *(moves: seq[Move]): string = 
+proc `$` *(moves: seq[Move]): string =
     var output = ""
     var attackBoard: array[BOARD_WIDTH * BOARD_HEIGHT, int]
     for move in moves:
@@ -140,27 +140,24 @@ proc generatePseudolegalMoves *(board: Board, turnColor: PieceColor): seq[Move] 
             if color(piece) == PieceColor.black:
                 # movement is reversed for pawns
                 DIRECTION = -1
-                
+
             let singlePawnMovement = FRONT*DIRECTION
-            var destination = position+singlePawnMovement
-            if not (destination in board.low..board.high):
+            if not (position+singlePawnMovement in board.low..board.high):
                 continue
 
-            if type(board[position+singlePawnMovement]) != PieceType.none:
-                continue
-            moves.add((position, position+singlePawnMovement))
+            if type(board[position+singlePawnMovement]) == PieceType.none:
+                moves.add((position, position+singlePawnMovement))
 
-            # only for pawn on 2nd and 2nd-last row
-            if (color(piece) == PieceColor.white and row(position) == BOARD_WIDTH - 2) or (color(piece) == PieceColor.black and row(position) == 1):
-                let doublePawnMovement = 2*FRONT*DIRECTION
-                var destination = position+doublePawnMovement
-                # this will never happen, probably?
-                if not (destination in board.low..board.high):
-                    continue
-                if type(board[position+doublePawnMovement]) != PieceType.none:
-                    continue
-                moves.add((position, position+doublePawnMovement))
-            
+                # only for pawn on 2nd and 2nd-last row
+                if (color(piece) == PieceColor.white and row(position) == BOARD_WIDTH - 2) or (color(piece) == PieceColor.black and row(position) == 1):
+                    let doublePawnMovement = 2*FRONT*DIRECTION
+                    # this will never happen, probably?
+                    if not (position+doublePawnMovement in board.low..board.high):
+                        continue
+                    if type(board[position+doublePawnMovement]) != PieceType.none:
+                        continue
+                    moves.add((position, position+doublePawnMovement))
+
             # take moves
             if type(board[position+FRONT*DIRECTION+LEFT]) != PieceType.none and color(board[position+FRONT*DIRECTION+LEFT]) != color(piece):
                 moves.add((position, position+FRONT*DIRECTION+LEFT))
@@ -185,7 +182,7 @@ proc generatePseudolegalMoves *(board: Board, turnColor: PieceColor): seq[Move] 
                 # out of bounds
                 if not (position+knightMovement in board.low..board.high):
                     continue
-                
+
                 if abs(column(position)-column(position+knightMovement)) > 2:
                     # make sure we don't jump from one side to the other
                     # this happens because of the board representation we have chosen
@@ -227,7 +224,7 @@ proc generatePseudolegalMoves *(board: Board, turnColor: PieceColor): seq[Move] 
 
                     moves.add((position, destination))
                     slidingPosition = destination
-        
+
         elif type(piece) == PieceType.bishop:
             for movement in [FRONT+LEFT, FRONT+RIGHT, BACK+LEFT, BACK+RIGHT]:
                 # simulate sliding
@@ -236,7 +233,7 @@ proc generatePseudolegalMoves *(board: Board, turnColor: PieceColor): seq[Move] 
                     var destination =  slidingPosition + movement
                     if not (destination in board.low..board.high):
                         break
-                    
+
                     if abs(column(slidingPosition)-column(destination)) > 1:
                         # make sure we don't move up a row based on left/right movement (aka wrap around)
                         # this happens because of the board representation we have chosen
@@ -263,7 +260,7 @@ proc generatePseudolegalMoves *(board: Board, turnColor: PieceColor): seq[Move] 
                     var destination =  slidingPosition + movement
                     if not (destination in board.low..board.high):
                         break
-                    
+
                     if abs(column(slidingPosition)-column(destination)) > 1:
                         # make sure we don't move up a row based on left/right movement (aka wrap around)
                         # this happens because of the board representation we have chosen
@@ -287,12 +284,12 @@ proc generatePseudolegalMoves *(board: Board, turnColor: PieceColor): seq[Move] 
             for movement in [FRONT, BACK, LEFT, RIGHT, FRONT+LEFT, FRONT+RIGHT, BACK+LEFT, BACK+RIGHT]:
                 var destination = position+movement
                 if not (destination in board.low..board.high):
-                    break
-                
+                    continue
+
                 if abs(column(position)-column(destination)) > 1:
                     # make sure we don't move up a row based on left/right movement (aka wrap around)
                     # this happens because of the board representation we have chosen
-                    break
+                    continue
 
                 # take move
                 if type(board[position+movement]) != PieceType.none:
@@ -341,3 +338,11 @@ proc isChecked *(board: Board, color: PieceColor): bool =
     let attackerMoves = generateMoves(board, attacker, onlyCaptures=true)
     # if any valid move targets the king
     return attackerMoves.anyIt(it.target == kingPosition)
+
+proc isCheckmated *(board: Board, color: PieceColor): bool =
+    let availableMoves = generateMoves(board, color)
+    return isChecked(board, color) and len(availableMoves) == 0
+
+proc isStalemated *(board: Board, color: PieceColor): bool =
+    let availableMoves = generateMoves(board, color)
+    return not isChecked(board, color) and len(availableMoves) == 0
