@@ -19,23 +19,26 @@ proc type *(piece: Piece): PieceType {.inline.} =
 proc color *(piece: Piece): PieceColor {.inline.} =
     PieceColor(bitand(piece, 24)) # upper 2 bits
 
-proc `$` *(piece: Piece): string =
+proc sign *(color: PieceColor): int8 {.inline.} =
+    return if color == PieceColor.white: 1 else: -1
+
+proc pieceToString *(piece: Piece): string =
     const piece_none_repr = "."
     const type_to_symbol_white = {
-        PieceType.pawn: "♟︎",
-        PieceType.knight: "♞",
-        PieceType.bishop: "♝",
-        PieceType.rook: "♜",
-        PieceType.queen: "♛",
-        PieceType.king: "♚",
+        PieceType.pawn: "P",
+        PieceType.knight: "N",
+        PieceType.bishop: "B",
+        PieceType.rook: "R",
+        PieceType.queen: "Q",
+        PieceType.king: "K",
     }.toTable
     const type_to_symbol_black = {
-        PieceType.pawn: "♙",
-        PieceType.knight: "♘",
-        PieceType.bishop: "♗",
-        PieceType.rook: "♖",
-        PieceType.queen: "♕",
-        PieceType.king: "♔",
+        PieceType.pawn: "p",
+        PieceType.knight: "n",
+        PieceType.bishop: "b",
+        PieceType.rook: "r",
+        PieceType.queen: "q",
+        PieceType.king: "k",
     }.toTable
     var piece_type = piece.type()
     if piece_type == PieceType.none:

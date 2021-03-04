@@ -1,4 +1,6 @@
 nim_chess
+perft_debug
+chess_engine
 # Created by https://www.toptal.com/developers/gitignore/api/linux,nim,vscode
 # Edit at https://www.toptal.com/developers/gitignore?templates=linux,nim,vscode
 

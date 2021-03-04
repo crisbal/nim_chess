@@ -47,7 +47,7 @@ proc `$` *(board: Board): string =
             output.add($(BOARD_HEIGHT - row(i)))
             output.add("  ")
 
-        let piece_repr = $piece
+        let piece_repr = pieceToString(piece)
         output.add(piece_repr)
     return output
 
@@ -85,12 +85,12 @@ type Move* = tuple
     target: Position
 
 proc moveFromString* (repr: string): Move =
-    var parts = repr.split("-")
-    assert len(parts) == 2
-    return (positionFromString(parts[0]), positionFromString(parts[1]))
+    # TODO: castle
+    assert len(repr) == 4
+    return (positionFromString(repr[0..1]), positionFromString(repr[2..3]))
 
 proc `$` *(move: Move): string =
-    return move.source.repr() & "-" & move.target.repr()
+    return move.source.repr() & move.target.repr()
 
 proc `$` *(moves: seq[Move]): string =
     var output = ""
@@ -117,8 +117,7 @@ proc evaluate *(board: Board): int =
     for piece in board:
         if type(piece) == PieceType.none:
             continue
-        let sign = if color(piece) == PieceColor.white: 1 else: -1
-        result += pieceValues.getOrDefault(type(piece), 0) * sign
+        result += pieceValues.getOrDefault(type(piece), 0) * sign(color(piece))
     return result
 
 const FRONT = -board.BOARD_WIDTH
@@ -159,12 +158,15 @@ proc generatePseudolegalMoves *(board: Board, turnColor: PieceColor): seq[Move] 
                     moves.add((position, position+doublePawnMovement))
 
             # take moves
-            if type(board[position+FRONT*DIRECTION+LEFT]) != PieceType.none and color(board[position+FRONT*DIRECTION+LEFT]) != color(piece):
-                moves.add((position, position+FRONT*DIRECTION+LEFT))
+            let front_left_position = position+FRONT*DIRECTION+LEFT
+            if abs(column(front_left_position)-column(position)) == 1: # boundary check
+                if type(board[front_left_position]) != PieceType.none and color(board[front_left_position]) != color(piece):
+                    moves.add((position, front_left_position))
 
-            if type(board[position+FRONT*DIRECTION+RIGHT]) != PieceType.none and color(board[position+FRONT*DIRECTION+RIGHT]) != color(piece):
-                moves.add((position, position+FRONT*DIRECTION+RIGHT))
-
+            let front_right_position = position+FRONT*DIRECTION+RIGHT
+            if abs(column(front_right_position)-column(position)) == 1: # boundary check
+                if type(board[front_right_position]) != PieceType.none and color(board[front_right_position]) != color(piece):
+                    moves.add((position, front_right_position))
 
         elif type(piece) == PieceType.knight:
             # . X . X .
@@ -306,7 +308,7 @@ proc generatePseudolegalMoves *(board: Board, turnColor: PieceColor): seq[Move] 
 
 proc playMove *(board: Board, move: Move): Board =
     var new_board: Board
-    new_board.shallowCopy(board)
+    new_board.deepCopy(board)
     new_board[move.target] = new_board[move.source]
     new_board[move.source] = 0
     return new_board
@@ -335,7 +337,8 @@ proc generateMoves *(board: Board, color: PieceColor, onlyCaptures: bool = false
 proc isChecked *(board: Board, color: PieceColor): bool =
     let attacker = !color
     let kingPosition = findKing(board, color)
-    let attackerMoves = generateMoves(board, attacker, onlyCaptures=true)
+    var attackerMoves = generatePseudolegalMoves(board, attacker)
+    attackerMoves = attackerMoves.filterIt(isCapture(board, it))
     # if any valid move targets the king
     return attackerMoves.anyIt(it.target == kingPosition)
 
@@ -346,3 +349,28 @@ proc isCheckmated *(board: Board, color: PieceColor): bool =
 proc isStalemated *(board: Board, color: PieceColor): bool =
     let availableMoves = generateMoves(board, color)
     return not isChecked(board, color) and len(availableMoves) == 0
+
+proc evalSearch *(board: Board, color: PieceColor, depth: uint): int = 
+    if depth == 0:
+        return evaluate(board)
+    else:
+        let availableMoves = generateMoves(board, color)
+        var bestScore = -90000
+        for move in availableMoves:
+            let new_board = playMove(board, move)
+            let score = sign(color) * evalSearch(new_board, !color, depth - 1)
+            if score > bestScore:
+                bestScore = score
+        return bestScore
+
+proc search *(board: Board, color: PieceColor, depth: uint8 = 4): Move =
+    let availableMoves = generateMoves(board, color)
+    var bestMove: Move
+    var bestScore = -90000
+    for move in availableMoves:
+        var new_board = playMove(board, move)
+        var score =  sign(color) * evalSearch(new_board, !color, depth)
+        if score > bestScore:
+            bestScore = score
+            bestMove = move
+    return bestMove

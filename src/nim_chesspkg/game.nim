@@ -5,11 +5,11 @@ import board
 import move
 
 type
-    Game* = tuple
-        board: Board
-        turn: PieceColor
-        halfmove_clock: int
-        fullmove_number: int
+    Game* = ref object
+        board*: Board
+        turn*: PieceColor
+        halfmove_clock*: int
+        fullmove_number*: int
 
 proc fromFen *(fen: string): Game =
     var parts = fen.split(" ")
@@ -28,4 +28,11 @@ proc fromFen *(fen: string): Game =
     var halfmove_clock = parseInt(parts[4])
     var fullmove_number = parseInt(parts[5])
 
-    return (game_board, turn, halfmove_clock, fullmove_number)
+    return Game(board: game_board, turn: turn, halfmove_clock: halfmove_clock, fullmove_number: fullmove_number)
+
+proc newGame *(): Game = 
+    return fromFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+
+proc play *(game: Game, move: Move) = 
+    game.board = playMove(game.board, move)
+    game.turn = !game.turn
