@@ -2,10 +2,9 @@ import strutils
 
 import piece
 import board
-import move
 
 type
-    Game* = ref object
+    Game* = object
         board*: Board
         turn*: PieceColor
         halfmove_clock*: int
@@ -17,7 +16,7 @@ proc fromFen *(fen: string): Game =
         raise newException(ValueError, "Invalid FEM")
 
     # piece placement
-    var game_board = board.from_fem_piece_placement(parts[0])
+    var game_board = board.fromFenPiecePlacement(parts[0])
 
     # active color
     var turn = if parts[1] == "w": PieceColor.white else: PieceColor.black
@@ -30,9 +29,12 @@ proc fromFen *(fen: string): Game =
 
     return Game(board: game_board, turn: turn, halfmove_clock: halfmove_clock, fullmove_number: fullmove_number)
 
-proc newGame *(): Game = 
+proc newGame *(): Game =
     return fromFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
 
-proc play *(game: Game, move: Move) = 
+proc playMove *(game: var Game, move: Move) =
     game.board = playMove(game.board, move)
     game.turn = !game.turn
+
+proc search *(game: Game, depth: uint8 = 4): Move =
+    return game.board.search(game.turn, depth)

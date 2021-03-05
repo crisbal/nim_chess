@@ -9,8 +9,8 @@ suite "board":
     var b = empty()
     check b.allIt(type(it) == PieceType.none)
 
-  test "fem_placement_starting":
-    var b = fromFemPiecePlacement("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR")
+  test "fen_placement_starting":
+    var b = fromFenPiecePlacement("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR")
     check b == [
       piece(PieceType.rook, PieceColor.black), piece(PieceType.knight, PieceColor.black), piece(PieceType.bishop, PieceColor.black), piece(PieceType.queen, PieceColor.black), piece(PieceType.king, PieceColor.black), piece(PieceType.bishop, PieceColor.black), piece(PieceType.knight, PieceColor.black), piece(PieceType.rook, PieceColor.black),
       piece(PieceType.pawn, PieceColor.black), piece(PieceType.pawn, PieceColor.black), piece(PieceType.pawn, PieceColor.black), piece(PieceType.pawn, PieceColor.black), piece(PieceType.pawn, PieceColor.black), piece(PieceType.pawn, PieceColor.black), piece(PieceType.pawn, PieceColor.black), piece(PieceType.pawn, PieceColor.black),
@@ -22,8 +22,8 @@ suite "board":
       piece(PieceType.rook, PieceColor.white), piece(PieceType.knight, PieceColor.white), piece(PieceType.bishop, PieceColor.white), piece(PieceType.queen, PieceColor.white), piece(PieceType.king, PieceColor.white), piece(PieceType.bishop, PieceColor.white), piece(PieceType.knight, PieceColor.white), piece(PieceType.rook, PieceColor.white),
     ]
 
-  test "fem_placement_e4":
-    var b = fromFemPiecePlacement("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR")
+  test "fen_placement_e4":
+    var b = fromFenPiecePlacement("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR")
     check b == [
       piece(PieceType.rook, PieceColor.black), piece(PieceType.knight, PieceColor.black), piece(PieceType.bishop, PieceColor.black), piece(PieceType.queen, PieceColor.black), piece(PieceType.king, PieceColor.black), piece(PieceType.bishop, PieceColor.black), piece(PieceType.knight, PieceColor.black), piece(PieceType.rook, PieceColor.black),
       piece(PieceType.pawn, PieceColor.black), piece(PieceType.pawn, PieceColor.black), piece(PieceType.pawn, PieceColor.black), piece(PieceType.pawn, PieceColor.black), piece(PieceType.pawn, PieceColor.black), piece(PieceType.pawn, PieceColor.black), piece(PieceType.pawn, PieceColor.black), piece(PieceType.pawn, PieceColor.black),
@@ -55,7 +55,7 @@ suite "move":
   test "move to string":
     check $(positionFromString("a8"), positionFromString("b8")) == "a8-b8"
     check $(positionFromString("a1"), positionFromString("f4")) == "a1-f4"
-  
+
   test "move from string":
-    check moveFromString("a8-h1") == (positionFromString("a8"), positionFromString("h1"))
-    check moveFromString("f8-b3") == (positionFromString("f8"), positionFromString("b3"))
+    check moveFromString("a8h1") == (positionFromString("a8"), positionFromString("h1"))
+    check moveFromString("f8b3") == (positionFromString("f8"), positionFromString("b3"))
