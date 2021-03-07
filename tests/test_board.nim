@@ -53,8 +53,8 @@ suite "position":
 
 suite "move":
   test "move to string":
-    check $(positionFromString("a8"), positionFromString("b8")) == "a8-b8"
-    check $(positionFromString("a1"), positionFromString("f4")) == "a1-f4"
+    check $(positionFromString("a8"), positionFromString("b8")) == "a8b8"
+    check $(positionFromString("a1"), positionFromString("f4")) == "a1f4"
 
   test "move from string":
     check moveFromString("a8h1") == (positionFromString("a8"), positionFromString("h1"))

@@ -1,7 +1,10 @@
 import strutils
+import random
 
 import piece
 import board
+
+randomize()
 
 type
     Game* = object
@@ -33,8 +36,13 @@ proc newGame *(): Game =
     return fromFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
 
 proc playMove *(game: var Game, move: Move) =
-    game.board = playMove(game.board, move)
+    discard board.playMove(game.board, move)
     game.turn = !game.turn
 
-proc search *(game: Game, depth: uint8 = 4): Move =
-    return game.board.search(game.turn, depth)
+proc search *(game: var Game, depth: uint8 = 4): Move =
+    var bestMove = game.board.search(game.turn, depth)
+    return bestMove
+
+proc searchAB *(game: var Game, depth: uint8 = 4): Move =
+    var bestMove = game.board.searchAB(game.turn, depth)
+    return bestMove

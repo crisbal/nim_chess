@@ -4,10 +4,19 @@ A chess library for Nim.
 
 ![CI Status](https://github.com/crisbal/nim_chess/actions/workflows/main.yml/badge.svg)
 
-## What's implemented
+## What's implemented right now
 
 * Board representation
 * FEN Board loading
-* Pseudo-legal move generation
+* Legal move generation
+    * No castling
+    * No en-passant
+    * No promotion
+* Iterative search
+    * Unoptimized negamax
+    * Alpha-beta negamax
+        * Rudimentary move ordering
+* `perft` e `dperft`
+* Very primitive UCI interface
 
-There is nothing much to check here at the moment.
+Note: performance is very bad now

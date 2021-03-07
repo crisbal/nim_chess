@@ -38,6 +38,6 @@ when isMainModule:
                 g.playMove(moveFromString(lastMove))
 
         if line.startsWith("go "):
-            var bestMove = g.search(3)
+            var bestMove = g.searchAB(4)
             echo "bestmove " & $bestMove
             g.playMove(bestMove)

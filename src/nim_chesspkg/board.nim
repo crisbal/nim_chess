@@ -1,6 +1,7 @@
 import strutils
 import sequtils
 import tables
+import algorithm
 
 import piece
 
@@ -306,12 +307,15 @@ proc generatePseudolegalMoves *(board: Board, turnColor: PieceColor): seq[Move] 
 
     return moves
 
-proc playMove *(board: Board, move: Move): Board =
-    var new_board: Board
-    new_board.deepCopy(board)
-    new_board[move.target] = new_board[move.source]
-    new_board[move.source] = 0
-    return new_board
+proc playMove *(board: var Board, move: Move): Piece =
+    let captured = board[move.target]
+    board[move.target] = board[move.source]
+    board[move.source] = 0
+    return captured
+
+proc undoMove *(board: var Board, move: Move, captured: Piece) =
+    board[move.source] = board[move.target]
+    board[move.target] = captured
 
 proc findKing *(board: Board, color: PieceColor): Position =
     for position, piece in board:
@@ -323,15 +327,16 @@ proc isCapture *(board: Board, move: Move): bool {.inline.} =
 
 proc isChecked *(board: Board, color: PieceColor): bool {.inline.}
 
-proc generateMoves *(board: Board, color: PieceColor, onlyCaptures: bool = false): seq[Move] =
+proc generateMoves *(board: var Board, color: PieceColor, onlyCaptures: bool = false): seq[Move] =
     let moves = generatePseudolegalMoves(board, color)
     var validMoves: seq[Move] = @[]
     for move in moves:
         if onlyCaptures and not isCapture(board, move):
             continue
-        let new_board = playMove(board, move)
-        if not isChecked(new_board, color):
+        let captured = playMove(board, move)
+        if not isChecked(board, color):
           validMoves.add(move)
+        undoMove(board, move, captured)
     return validMoves
 
 proc isChecked *(board: Board, color: PieceColor): bool =
@@ -342,15 +347,15 @@ proc isChecked *(board: Board, color: PieceColor): bool =
     # if any valid move targets the king
     return attackerMoves.anyIt(it.target == kingPosition)
 
-proc isCheckmated *(board: Board, color: PieceColor): bool {.inline.} =
+proc isCheckmated *(board: var Board, color: PieceColor): bool {.inline.} =
     let availableMoves = generateMoves(board, color)
     return isChecked(board, color) and len(availableMoves) == 0
 
-proc isStalemated *(board: Board, color: PieceColor): bool {.inline.}  =
+proc isStalemated *(board: var Board, color: PieceColor): bool {.inline.}  =
     let availableMoves = generateMoves(board, color)
     return not isChecked(board, color) and len(availableMoves) == 0
 
-proc evaluateDeep *(board: Board, color: PieceColor, depth: uint): int =
+proc evaluateDeep *(board: var Board, color: PieceColor, depth: uint): int =
     if depth == 0:
         return evaluate(board)
     else:
@@ -362,20 +367,70 @@ proc evaluateDeep *(board: Board, color: PieceColor, depth: uint): int =
                 return 0
         var bestScore = int(int16.low)
         for move in availableMoves:
-            let new_board = playMove(board, move)
-            let score = sign(color) * evaluateDeep(new_board, !color, depth - 1)
+            let captured = playMove(board, move)
+            let score = sign(color) * evaluateDeep(board, !color, depth - 1)
+            undoMove(board, move, captured)
             if score > bestScore:
                 bestScore = score
         return sign(color) * bestScore
 
-proc search *(board: Board, color: PieceColor, depth: uint8): Move =
+proc search *(board: var Board, color: PieceColor, depth: uint8): Move =
     let availableMoves = generateMoves(board, color)
-    var bestMove: Move
     var bestScore = int(int16.low)
     # always maximize bestScore
+    var bestMove: Move
     for move in availableMoves:
-        var new_board = playMove(board, move)
-        var score = sign(color) * evaluateDeep(new_board, !color, depth)
+        let captured = playMove(board, move)
+        var score = sign(color) * evaluateDeep(board, !color, depth)
+        undoMove(board, move, captured)
+        if score > bestScore:
+            bestScore = score
+            bestMove = move
+    return bestMove
+
+proc score (move: Move, board: Board): int =
+    var value = 0
+    # prioritize high-value captures
+    if type(board[move.target]) != PieceType.none:
+        value = pieceValues[type(board[move.target])] - pieceValues[type(board[move.source])]
+    return value
+
+proc evaluateAB *(board: var Board, color: PieceColor, depth: uint, alpha: int, beta: int): int =
+    if depth == 0:
+        return sign(color) * evaluate(board)
+    else:
+        var moves = generateMoves(board, color)
+        if len(moves) == 0:
+            if isChecked(board, color): # you are checkmated!
+                return int(int16.low)
+            else: # draw
+                return 0
+        
+        # sort the moves according to heuristic score
+        var move_to_score = initTable[Move, int]()
+        for move in moves:
+            move_to_score[move] = score(move, board)
+        moves.sort(proc (m1, m2: Move): int = move_to_score.getOrDefault(m1, 0) - move_to_score.getOrDefault(m2, 0))
+        
+        var currAlpha = alpha
+        for move in moves:
+            let captured = playMove(board, move)
+            var evaluation = -1 * evaluateAB(board, !color, depth - 1, -beta, -curr_alpha)
+            undoMove(board, move, captured)
+            if evaluation >= beta:
+                return beta 
+            currAlpha = max(currAlpha, evaluation)
+        return currAlpha
+
+proc searchAB *(board: var Board, color: PieceColor, depth: uint8): Move =
+    let availableMoves = generateMoves(board, color)
+    var bestScore = int(int16.low)
+    var bestMove: Move
+    # always maximize bestScore
+    for move in availableMoves:
+        let captured = playMove(board, move)
+        var score = -1 * evaluateAB(board, !color, depth, int(int16.low), int(int16.high))
+        undoMove(board, move, captured)
         if score > bestScore:
             bestScore = score
             bestMove = move
