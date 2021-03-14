@@ -1,6 +1,5 @@
 import tables
 import bitops
-import strutils
 
 type Piece* = uint8
 
@@ -9,6 +8,15 @@ type PieceType* {.size: sizeof(Piece), pure.} = enum
 
 type PieceColor* {.size: sizeof(Piece), pure.} = enum
     none=0, black=8, white=16
+
+const PIECE_VALUES* = {
+    PieceType.pawn: 100,
+    PieceType.knight: 300,
+    PieceType.bishop: 350,
+    PieceType.rook: 500,
+    PieceType.queen: 900,
+    PieceType.king: 10000,
+}.toTable
 
 proc piece *(piece_type: PieceType, piece_color: PieceColor): Piece {.inline.} =
     Piece(bitor(ord(piece_type), ord(piece_color)))
@@ -54,3 +62,4 @@ proc `!` *(pieceColor: PieceColor): PieceColor =
         return PieceColor.black
     else:
         return PieceColor.white
+

@@ -1,25 +1,26 @@
 import piece
 import board
+import game
 
-proc perft *(board: var Board, depth: uint, color: PieceColor = PieceColor.white): int =
+proc perft *(game: var Game, depth: uint): int =
     if depth == 0:
         return 1
 
-    let availableMoves = generateMoves(board, color)
+    let availableMoves = generateMoves(game)
     var nodes = 0
     for move in availableMoves:
-        var captured = playMove(board, move)
-        nodes += perft(board, depth-1, !color)
-        undoMove(board, move, captured)
+        var moveEffect = playMove(game, move)
+        nodes += perft(game, depth-1)
+        undoMove(game, move, moveEffect)
     return nodes
 
-proc dperft *(board: var Board, depth: uint, color: PieceColor = PieceColor.white): int =
-    let availableMoves = generateMoves(board, color)
+proc dperft *(game: var Game, depth: uint): int =
+    let availableMoves = generateMoves(game)
     var nodes = 0
     for move in availableMoves:
-        var captured = playMove(board, move)
-        var part_nodes = perft(board, depth-1, !color)
-        undoMove(board, move, captured)
+        var moveEffect = playMove(game, move)
+        var part_nodes = perft(game, depth-1)
+        undoMove(game, move, moveEffect)
         echo $move & " " & $part_nodes 
         nodes += part_nodes
     echo ""

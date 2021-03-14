@@ -4,6 +4,7 @@ import strutils
 import nim_chesspkg/board
 import nim_chesspkg/piece
 import nim_chesspkg/game
+import nim_chesspkg/move
 import nim_chesspkg/utils
 
 when isMainModule:
@@ -19,11 +20,9 @@ when isMainModule:
   var g = game.fromFen(fen)
   var b = g.board
 
-  var turn = g.turn
   if len(args) > 2:
     for move in args[2].split(" "):
-      b = playMove(b, moveFromString(move))
-      turn = !turn
+      discard g.playMove(moveFromString(move))
   # echo $g.board
   #[ let moves = generatePseudolegalMoves(g.board, g.turn)
   echo $moves
@@ -42,4 +41,4 @@ when isMainModule:
   echo "" 
   echo g.board.search(PieceColor.white, 3) ]#
   #echo g.board.search(PieceColor.black, 1) 
-  discard b.dperft(depth, turn)
+  discard g.dperft(depth)

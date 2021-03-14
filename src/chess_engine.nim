@@ -1,13 +1,17 @@
 # simple interface with an UCI
 import strutils
+import system
 
 import nim_chesspkg/board
 import nim_chesspkg/piece
 import nim_chesspkg/game
+import nim_chesspkg/move
 import nim_chesspkg/utils
 
 var log = open("/tmp/uci.log", fmAppend)
+# system.stderr = log
 
+var game_started = false
 var g: Game
 when isMainModule:
     var line = ""
@@ -26,18 +30,32 @@ when isMainModule:
             break
 
         if line == "ucinewgame":
-            g = newGame()
+            continue
 
         if line.startsWith("position "):
             let parts: seq[string] = line.split(" ")
-            assert parts[1] == "startpos"
-            if len(parts) > 2:
-                assert parts[2] == "moves"
-                let moves = parts[3..parts.high]
+            var i_moves = parts.find("moves")
+            if i_moves < 0:
+                i_moves = parts.high + 1
+
+            if not game_started:
+                game_started = true
+                if parts[1] == "startpos":
+                    g = game.fromFen(STARTING_FEN)
+                else:
+                    let fen_setup = parts[2..(i_moves - 1)]
+                    g = game.fromFen(fen_setup.join(" "))
+
+            let moves = parts[i_moves..parts.high]
+            if len(moves) > 1:
+                assert moves[0] == "moves"
+                let moves = moves[1..moves.high]
+                log.writeLine($moves)
                 let lastMove = moves[moves.high]
-                g.playMove(moveFromString(lastMove))
+                discard g.playMove(moveFromString(lastMove))
+                log.writeLine($g.board)
 
         if line.startsWith("go "):
-            var bestMove = g.searchAB(4)
+            var bestMove = g.searchAB(5)
             echo "bestmove " & $bestMove
-            g.playMove(bestMove)
+            discard g.playMove(bestMove)
