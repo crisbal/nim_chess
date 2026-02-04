@@ -11,11 +11,11 @@ when isMainModule:
   var fen = STARTING_FEN
   if len(params) > 0:
     fen = params[0]
-  
+
   var g = game.fromFen(fen)
 
   if len(params) > 1:
-    for moveString in params[1..params.high]:
+    for moveString in params[1 .. params.high]:
       let move = moveFromString(moveString)
       echo "Playing " & $move
       discard g.playMove(move)

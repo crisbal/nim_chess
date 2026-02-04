@@ -14,7 +14,7 @@ when isMainModule:
   # b[2] = piece.piece(PieceType.knight, PieceColor.black)
   # b[3] = piece.piece(PieceType.knight, PieceColor.white)
   # echo $b
-  let args =  commandLineParams()
+  let args = commandLineParams()
   let depth: uint = uint(parseInt(args[0]))
   let fen: string = args[1]
   var g = game.fromFen(fen)
@@ -38,7 +38,7 @@ when isMainModule:
   for move in validMoves:
     echo $move
 
-  echo "" 
+  echo ""
   echo g.board.search(PieceColor.white, 3) ]#
-  #echo g.board.search(PieceColor.black, 1) 
+  #echo g.board.search(PieceColor.black, 1)
   discard g.dperft(depth)
