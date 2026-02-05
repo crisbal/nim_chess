@@ -52,10 +52,10 @@ when isMainModule:
         let moves = moves[1 .. moves.high]
         log.writeLine($moves)
         let lastMove = moves[moves.high]
-        discard g.playMove(moveFromLongAlgebric(lastMove))
+        discard playMove(g, moveFromLongAlgebric(lastMove))
         log.writeLine($g.board)
 
     if line.startsWith("go "):
       var bestMove = g.searchAB(5)
       echo "bestmove " & $bestMove
-      discard g.playMove(bestMove)
+      discard playMove(g, bestMove)

@@ -18,7 +18,7 @@ when isMainModule:
     for moveString in params[1 .. params.high]:
       let move = moveFromLongAlgebric(moveString)
       echo "Playing " & $move
-      discard g.playMove(move)
+      discard playMove(g, move)
 
   echo $g.board
   echo ""

@@ -2,6 +2,7 @@ import piece
 import board
 import game
 import move
+import nimprof
 
 proc perft*(game: var Game, depth: uint): int =
   if depth == 0:
