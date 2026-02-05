@@ -59,14 +59,14 @@ proc fromFen*(fen: string): Game =
   let castling_string = parts[2]
   var castling = CastlingStatus(0)
   if castling_string != "-":
-    if "K" in castling_string:
-      castling += CastlingStatus(bitor(ord(CastlingType.K), ord(castling)))
-    if "k" in castling_string:
-      castling += CastlingStatus(bitor(ord(CastlingType.k), ord(castling)))
-    if "Q" in castling_string:
-      castling += CastlingStatus(bitor(ord(CastlingType.Q), ord(castling)))
-    if "q" in castling_string:
-      castling += CastlingStatus(bitor(ord(CastlingType.q), ord(castling)))
+    if 'K' in castling_string:
+      castling = castling or CastlingStatus(ord(CastlingType.K))
+    if 'k' in castling_string:
+      castling = castling or CastlingStatus(ord(CastlingType.k))
+    if 'Q' in castling_string:
+      castling = castling or CastlingStatus(ord(CastlingType.Q))
+    if 'q' in castling_string:
+      castling = castling or CastlingStatus(ord(CastlingType.q))
 
   let enpassant_string = parts[3]
   var enpassant: int8 = NO_ENPASSANT
