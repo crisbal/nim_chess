@@ -52,7 +52,7 @@ when isMainModule:
         let moves = moves[1 .. moves.high]
         log.writeLine($moves)
         let lastMove = moves[moves.high]
-        discard g.playMove(moveFromString(lastMove))
+        discard g.playMove(moveFromLongAlgebric(lastMove))
         log.writeLine($g.board)
 
     if line.startsWith("go "):

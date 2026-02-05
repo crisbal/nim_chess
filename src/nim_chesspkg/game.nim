@@ -23,6 +23,7 @@ type GameStatus = object
   enpassant*: Position
   halfmoveClock*: int
   fullmoveNumber*: int
+  # Cached values for performance
   whiteKingPosition: Position
   blackKingPosition: Position
 
@@ -30,10 +31,6 @@ type Game* = object
   board*: Board
   status: GameStatus
 
-proc findKing*(board: Board, color: PieceColor): Position =
-  for position, piece in board:
-    if type(piece) == PieceType.king and color(piece) == color:
-      return position
 
 const STARTING_FEN* = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
@@ -63,7 +60,7 @@ proc fromFen*(fen: string): Game =
   let enpassant_string = parts[3]
   var enpassant: Position
   if enpassant_string != "-":
-    enpassant = positionFromString(enpassant_string)
+    enpassant = positionFromAlgebric(enpassant_string)
 
   var halfmoveClock = parseInt(parts[4])
   var fullmoveNumber = parseInt(parts[5])
@@ -119,7 +116,7 @@ const BACK = -FRONT
 const LEFT = -1
 const RIGHT = -LEFT
 
-proc generatePseudolegalMoves*(board: Board, turnColor: PieceColor): seq[Move] =
+proc generatePseudolegalMoves*(board: Board, status: GameStatus, turnColor: PieceColor): seq[Move] =
   var moves: seq[Move] = @[]
   for position, piece in board:
     if type(piece) == PieceType.none:
@@ -139,7 +136,16 @@ proc generatePseudolegalMoves*(board: Board, turnColor: PieceColor): seq[Move] =
         continue
 
       if type(board[position + singlePawnMovement]) == PieceType.none:
-        moves.add((position, position + singlePawnMovement))
+        # Check for promotion (pawn reaching last rank)
+        let isPromotion = (color(piece) == PieceColor.white and row(position) == 1) or
+                          (color(piece) == PieceColor.black and row(position) == 6)
+        if isPromotion:
+          moves.add(newMove(position, position + singlePawnMovement, QueenPromotion))
+          moves.add(newMove(position, position + singlePawnMovement, RookPromotion))
+          moves.add(newMove(position, position + singlePawnMovement, BishopPromotion))
+          moves.add(newMove(position, position + singlePawnMovement, KnightPromotion))
+        else:
+          moves.add(newMove(position, position + singlePawnMovement, Quiet))
 
         # only for pawn on 2nd and 2nd-last row
         if (color(piece) == PieceColor.white and row(position) == BOARD_WIDTH - 2) or
@@ -150,7 +156,7 @@ proc generatePseudolegalMoves*(board: Board, turnColor: PieceColor): seq[Move] =
             continue
           if type(board[position + doublePawnMovement]) != PieceType.none:
             continue
-          moves.add((position, position + doublePawnMovement))
+          moves.add(newMove(position, position + doublePawnMovement, DoublePawnPush))
 
       # take moves
       let front_left_position = position + FRONT * DIRECTION + LEFT
@@ -158,14 +164,36 @@ proc generatePseudolegalMoves*(board: Board, turnColor: PieceColor): seq[Move] =
           abs(column(front_left_position) - column(position)) == 1: # boundary check
         if type(board[front_left_position]) != PieceType.none and
             color(board[front_left_position]) != color(piece):
-          moves.add((position, front_left_position))
+          let isPromoCapture = (color(piece) == PieceColor.white and row(position) == 1) or
+                               (color(piece) == PieceColor.black and row(position) == 6)
+          if isPromoCapture:
+            moves.add(newMove(position, front_left_position, QueenPromoCapture))
+            moves.add(newMove(position, front_left_position, RookPromoCapture))
+            moves.add(newMove(position, front_left_position, BishopPromoCapture))
+            moves.add(newMove(position, front_left_position, KnightPromoCapture))
+          else:
+            moves.add(newMove(position, front_left_position, Captures))
+        # En passant left
+        elif status.enpassant == Position(front_left_position):
+          moves.add(newMove(position, front_left_position, EpCapture))
 
       let front_right_position = position + FRONT * DIRECTION + RIGHT
       if front_right_position in board.low .. board.high and
           abs(column(front_right_position) - column(position)) == 1: # boundary check
         if type(board[front_right_position]) != PieceType.none and
             color(board[front_right_position]) != color(piece):
-          moves.add((position, front_right_position))
+          let isPromoCapture = (color(piece) == PieceColor.white and row(position) == 1) or
+                               (color(piece) == PieceColor.black and row(position) == 6)
+          if isPromoCapture:
+            moves.add(newMove(position, front_right_position, QueenPromoCapture))
+            moves.add(newMove(position, front_right_position, RookPromoCapture))
+            moves.add(newMove(position, front_right_position, BishopPromoCapture))
+            moves.add(newMove(position, front_right_position, KnightPromoCapture))
+          else:
+            moves.add(newMove(position, front_right_position, Captures))
+        # En passant right
+        elif status.enpassant == Position(front_right_position):
+          moves.add(newMove(position, front_right_position, EpCapture))
     elif type(piece) == PieceType.knight:
       # . X . X .
       # X . . . X
@@ -197,9 +225,10 @@ proc generatePseudolegalMoves*(board: Board, turnColor: PieceColor): seq[Move] =
           # can only take a different color
           if color(piece) == color(board[position + knightMovement]):
             continue
-
-        # movement move
-        moves.add((position, position + knightMovement))
+          moves.add(newMove(position, position + knightMovement, Captures))
+        else:
+          # quiet move
+          moves.add(newMove(position, position + knightMovement, Quiet))
     elif type(piece) == PieceType.rook:
       for movement in [FRONT, BACK, LEFT, RIGHT]:
         # simulate sliding
@@ -222,10 +251,10 @@ proc generatePseudolegalMoves*(board: Board, turnColor: PieceColor): seq[Move] =
               break
             else:
               # take and stop
-              moves.add((position, destination))
+              moves.add(newMove(position, destination, Captures))
               break
 
-          moves.add((position, destination))
+          moves.add(newMove(position, destination, Quiet))
           slidingPosition = destination
     elif type(piece) == PieceType.bishop:
       for movement in [FRONT + LEFT, FRONT + RIGHT, BACK + LEFT, BACK + RIGHT]:
@@ -248,10 +277,10 @@ proc generatePseudolegalMoves*(board: Board, turnColor: PieceColor): seq[Move] =
               break
             else:
               # take and stop
-              moves.add((position, destination))
+              moves.add(newMove(position, destination, Captures))
               break
 
-          moves.add((position, destination))
+          moves.add(newMove(position, destination, Quiet))
           slidingPosition = destination
     elif type(piece) == PieceType.queen:
       for movement in [
@@ -275,13 +304,12 @@ proc generatePseudolegalMoves*(board: Board, turnColor: PieceColor): seq[Move] =
               break
             else:
               # take and stop
-              moves.add((position, destination))
+              moves.add(newMove(position, destination, Captures))
               break
 
-          moves.add((position, destination))
+          moves.add(newMove(position, destination, Quiet))
           slidingPosition = destination
     elif type(piece) == PieceType.king:
-      # TODO Castling
       for movement in [
         FRONT, BACK, LEFT, RIGHT, FRONT + LEFT, FRONT + RIGHT, BACK + LEFT, BACK + RIGHT
       ]:
@@ -300,22 +328,53 @@ proc generatePseudolegalMoves*(board: Board, turnColor: PieceColor): seq[Move] =
           if color(piece) == color(board[position + movement]):
             continue
           else:
-            moves.add((position, position + movement))
+            moves.add(newMove(position, position + movement, Captures))
             continue
 
-        moves.add((position, position + movement))
+        moves.add(newMove(position, position + movement, Quiet))
+      # Castling
+      if color(piece) == PieceColor.white:
+        # king side
+        if (bitand(status.castling, ord(CastlingType.K).uint8) != 0):
+          if type(board[position + RIGHT]) == PieceType.none and
+              type(board[position + 2 * RIGHT]) == PieceType.none and
+              type(board[position + 3 * RIGHT]) == PieceType.rook and
+              color(board[position + 3 * RIGHT]) == PieceColor.white:
+            moves.add(newMove(position, position + 2 * RIGHT, KingCastle))
+        # queen side
+        if (bitand(status.castling, ord(CastlingType.Q).uint8) != 0):
+          if type(board[position + LEFT]) == PieceType.none and
+              type(board[position + 2 * LEFT]) == PieceType.none and
+              type(board[position + 3 * LEFT]) == PieceType.none and
+              type(board[position + 4 * LEFT]) == PieceType.rook and
+              color(board[position + 4 * LEFT]) == PieceColor.white:
+            moves.add(newMove(position, position + 2 * LEFT, QueenCastle))
+      elif color(piece) == PieceColor.black:
+        # king side
+        if (bitand(status.castling, ord(CastlingType.k).uint8) != 0):
+          if type(board[position + RIGHT]) == PieceType.none and
+              type(board[position + 2 * RIGHT]) == PieceType.none and
+              type(board[position + 3 * RIGHT]) == PieceType.rook and
+              color(board[position + 3 * RIGHT]) == PieceColor.black:
+            moves.add(newMove(position, position + 2 * RIGHT, KingCastle))
+        # queen side
+        if (bitand(status.castling, ord(CastlingType.q).uint8) != 0):
+          if type(board[position + LEFT]) == PieceType.none and
+              type(board[position + 2 * LEFT]) == PieceType.none and
+              type(board[position + 3 * LEFT]) == PieceType.none and
+              type(board[position + 4 * LEFT]) == PieceType.rook and
+              color(board[position + 4 * LEFT]) == PieceColor.black:
+            moves.add(newMove(position, position + 2 * LEFT, QueenCastle))
   return moves
 
 proc isChecked*(
   board: Board, gameStatus: GameStatus, color: PieceColor
 ): bool {.inline.}
 
-proc generateMoves*(game: var Game, onlyCaptures: bool = false): seq[Move] =
-  let moves = generatePseudolegalMoves(game.board, game.status.turn)
+proc generateMoves*(game: var Game): seq[Move] =
+  let moves = generatePseudolegalMoves(game.board, game.status, game.status.turn)
   var validMoves: seq[Move] = @[]
   for move in moves:
-    if onlyCaptures and not isCapture(game.board, move):
-      continue
     let moveEffect = playMove(game, move)
     if not isChecked(game.board, game.status, !game.status.turn):
       validMoves.add(move)
@@ -329,7 +388,8 @@ proc isChecked*(board: Board, gameStatus: GameStatus, color: PieceColor): bool =
       gameStatus.whiteKingPosition
     else:
       gameStatus.blackKingPosition
-  var attackerMoves = generatePseudolegalMoves(board, attacker)
+  var attackerMoves = generatePseudolegalMoves(board, gameStatus, attacker)
+  # TODO: this is not great, as it does not take into account pins, discovered checks? maybe?
   attackerMoves = attackerMoves.filterIt(isCapture(board, it))
   # if any valid move targets the king
   return attackerMoves.anyIt(it.target == kingPosition)
@@ -382,7 +442,7 @@ proc evaluateAB*(game: var Game, depth: uint, alpha: int, beta: int): int =
   var currAlpha = alpha
   for move in moves:
     let effect = playMove(game, move)
-    var evaluation = -1 * evaluateAB(game, depth - 1, -beta, -curr_alpha)
+    var evaluation = -1 * evaluateAB(game, depth - 1, -beta, -currAlpha)
     undoMove(game, move, effect)
     if evaluation >= beta:
       return beta

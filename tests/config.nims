@@ -1,1 +1,1 @@
-switch("path", "$projectDir/../src")
+--deepcopy:on

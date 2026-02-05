@@ -8,24 +8,25 @@ const STARTING_PIECES_FEN* = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"
 
 const BOARD_WIDTH* = 8
 const BOARD_HEIGHT* = 8
-type Position* = type(sizeof(board.BOARD_WIDTH * board.BOARD_HEIGHT))
-type Board* = array[BOARD_WIDTH * BOARD_HEIGHT, Piece]
+const BOARD_SIZE* = BOARD_WIDTH * BOARD_HEIGHT
+type Position* = range[0 .. BOARD_SIZE - 1]
+type Board* = array[BOARD_SIZE, Piece]
 
 proc column*(position: Position): int {.inline.} =
   # NOTE: not the file!
-  return (position mod BOARD_WIDTH)
+  return position mod BOARD_WIDTH
 
 proc row*(position: Position): int {.inline.} =
-  # NOTE:not the rank!
-  return int(position / BOARD_WIDTH)
+  # NOTE: not the rank!
+  return position div BOARD_WIDTH
 
 const FILES* = toSeq('a' .. char(ord('a') + BOARD_WIDTH - 1))
-proc repr*(position: Position): string =
+proc toAlgebraic*(position: Position): string =
   let col = column(position)
   let row = row(position)
   return FILES[col] & $(BOARD_HEIGHT - row)
 
-proc positionFromString*(repr: string): Position =
+proc positionFromAlgebric*(repr: string): Position =
   assert len(repr) == 2
   assert isLowerAscii(repr[0])
   assert isDigit(repr[1])
@@ -86,3 +87,8 @@ proc evaluate*(board: Board): int =
       continue
     result += (PIECE_VALUES[type(piece)] * sign(color(piece)))
   return result
+
+proc findKing*(board: Board, color: PieceColor): Position =
+  for position, piece in board:
+    if type(piece) == PieceType.king and color(piece) == color:
+      return position

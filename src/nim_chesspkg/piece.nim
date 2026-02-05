@@ -17,14 +17,15 @@ type PieceColor* {.size: sizeof(Piece), pure.} = enum
   black = 8
   white = 16
 
-const PIECE_VALUES* = {
-  PieceType.pawn: 100,
-  PieceType.knight: 300,
-  PieceType.bishop: 350,
-  PieceType.rook: 500,
-  PieceType.queen: 900,
-  PieceType.king: 10000,
-}.toTable
+const PieceValues*: array[PieceType, int] = [
+  none: 0,
+  pawn: 100,
+  knight: 300,
+  bishop: 350,
+  rook: 500,
+  queen: 900,
+  king: 10000
+]
 
 proc piece*(piece_type: PieceType, piece_color: PieceColor): Piece {.inline.} =
   Piece(bitor(ord(piece_type), ord(piece_color)))

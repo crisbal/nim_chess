@@ -22,7 +22,7 @@ when isMainModule:
 
   if len(args) > 2:
     for move in args[2].split(" "):
-      discard g.playMove(moveFromString(move))
+      discard g.playMove(moveFromLongAlgebric(move))
   # echo $g.board
   #[ let moves = generatePseudolegalMoves(g.board, g.turn)
   echo $moves
