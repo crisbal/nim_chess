@@ -20,7 +20,7 @@ type CastlingType* {.size: sizeof(uint8), pure.} = enum
 type MoveEffect* = object
   captured*: Piece
   previousTurn*: PieceColor
-  previousEnpassant*: Position
+  previousEnpassant*: int8
   previousCastling*: CastlingStatus
   previousHalfmoveClock*: int
   previousFullmoveNumber*: int
@@ -31,7 +31,7 @@ type Game* = object
 
   # Position state (what's needed for move generation)
   turn*: PieceColor
-  enpassantPosition*: Position
+  enpassantPosition*: int8  # Use int8 to allow NO_ENPASSANT (-1) sentinel
   castlingStatus*: CastlingStatus
 
   # Game metadata (for rules/notation)
@@ -69,9 +69,9 @@ proc fromFen*(fen: string): Game =
       castling += CastlingStatus(bitor(ord(CastlingType.q), ord(castling)))
 
   let enpassant_string = parts[3]
-  var enpassant: Position
+  var enpassant: int8 = NO_ENPASSANT
   if enpassant_string != "-":
-    enpassant = positionFromAlgebric(enpassant_string)
+    enpassant = int8(positionFromAlgebric(enpassant_string))
 
   var halfmoveClock = parseInt(parts[4])
   var fullmoveNumber = parseInt(parts[5])
@@ -206,10 +206,10 @@ proc playMove*(game: var Game, move: Move): MoveEffect =
   # Update en passant position
   if move.kind == DoublePawnPush:
     # Set en passant to the square the pawn jumped over
-    game.enpassantPosition = Position((int(move.source) + int(move.target)) div 2)
+    game.enpassantPosition = int8((int(move.source) + int(move.target)) div 2)
   else:
     # Clear en passant
-    game.enpassantPosition = Position(0)
+    game.enpassantPosition = NO_ENPASSANT
 
   # Update halfmove clock (50-move rule)
   # Reset to 0 if pawn move or capture, otherwise increment
@@ -322,12 +322,10 @@ proc generatePseudolegalMoves*(game: Game): seq[Move] =
         if (color(piece) == PieceColor.white and row(position) == BOARD_WIDTH - 2) or
             (color(piece) == PieceColor.black and row(position) == 1):
           let doublePawnMovement = 2 * FRONT * DIRECTION
-          # this will never happen, probably?
-          if not (position + doublePawnMovement in game.board.low .. game.board.high):
-            continue
-          if type(game.board[position + doublePawnMovement]) != PieceType.none:
-            continue
-          moves.add(newMove(position, position + doublePawnMovement, DoublePawnPush))
+          # Check if double push is valid (in bounds and both squares empty)
+          if (position + doublePawnMovement in game.board.low .. game.board.high) and
+              type(game.board[position + doublePawnMovement]) == PieceType.none:
+            moves.add(newMove(position, position + doublePawnMovement, DoublePawnPush))
 
       # take moves
       let front_left_position = position + FRONT * DIRECTION + LEFT
@@ -345,7 +343,7 @@ proc generatePseudolegalMoves*(game: Game): seq[Move] =
           else:
             moves.add(newMove(position, front_left_position, Captures))
         # En passant left
-        elif game.enpassantPosition == Position(front_left_position):
+        elif game.enpassantPosition == int8(front_left_position):
           moves.add(newMove(position, front_left_position, EpCapture))
 
       let front_right_position = position + FRONT * DIRECTION + RIGHT
@@ -363,7 +361,7 @@ proc generatePseudolegalMoves*(game: Game): seq[Move] =
           else:
             moves.add(newMove(position, front_right_position, Captures))
         # En passant right
-        elif game.enpassantPosition == Position(front_right_position):
+        elif game.enpassantPosition == int8(front_right_position):
           moves.add(newMove(position, front_right_position, EpCapture))
     elif type(piece) == PieceType.knight:
       # . X . X .

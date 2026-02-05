@@ -2,7 +2,6 @@ import piece
 import board
 import game
 import move
-import nimprof
 
 proc perft*(game: var Game, depth: uint): int =
   if depth == 0:
@@ -16,15 +15,18 @@ proc perft*(game: var Game, depth: uint): int =
     undoMove(game, move, moveEffect)
   return nodes
 
-proc dperft*(game: var Game, depth: uint): int =
+proc divide*(game: var Game, depth: uint): int =
+  ## Divide command - lists all moves and perft count for each
+  ## Output format matches Stockfish's "go perft" command
+  ## https://www.chessprogramming.org/Perft#Divide
   let availableMoves = generateMoves(game)
   var nodes = 0
   for move in availableMoves:
     var moveEffect = playMove(game, move)
-    var part_nodes = perft(game, depth - 1)
+    var moveNodes = perft(game, depth - 1)
     undoMove(game, move, moveEffect)
-    echo $move & " " & $part_nodes
-    nodes += part_nodes
+    echo $move & ": " & $moveNodes
+    nodes += moveNodes
   echo ""
-  echo $nodes
+  echo "Nodes searched: " & $nodes
   return nodes

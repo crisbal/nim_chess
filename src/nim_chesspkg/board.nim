@@ -10,6 +10,9 @@ const BOARD_WIDTH* = 8
 const BOARD_HEIGHT* = 8
 const BOARD_SIZE* = BOARD_WIDTH * BOARD_HEIGHT
 type Position* = range[0 .. BOARD_SIZE - 1]
+
+# Sentinel value for "no en passant square" - using -1 as it's outside valid Position range
+const NO_ENPASSANT*: int8 = -1
 type Board* = array[BOARD_SIZE, Piece]
 
 proc column*(position: Position): int {.inline.} =
