@@ -24,4 +24,7 @@ when isMainModule:
   echo ""
   echo "Evaluation: " & $g.board.evaluate
   echo ""
-  echo $g.searchAB(5)
+  let result = g.searchAB(5)
+  echo "Best move: " & $result.bestMove
+  echo "Score: " & $result.score
+  echo "Nodes: " & $result.nodes

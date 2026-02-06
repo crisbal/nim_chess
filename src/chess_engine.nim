@@ -30,6 +30,7 @@ when isMainModule:
       break
 
     if line == "ucinewgame":
+      game_started = false  # Reset for new game
       continue
 
     if line.startsWith("position "):
@@ -38,24 +39,35 @@ when isMainModule:
       if i_moves < 0:
         i_moves = parts.high + 1
 
-      if not game_started:
-        game_started = true
-        if parts[1] == "startpos":
-          g = game.fromFen(STARTING_FEN)
-        else:
-          let fen_setup = parts[2 .. (i_moves - 1)]
-          g = game.fromFen(fen_setup.join(" "))
+      # Always parse position
+      if parts[1] == "startpos":
+        g = game.fromFen(STARTING_FEN)
+      else:
+        let fen_setup = parts[2 .. (i_moves - 1)]
+        g = game.fromFen(fen_setup.join(" "))
 
-      let moves = parts[i_moves .. parts.high]
-      if len(moves) > 1:
-        assert moves[0] == "moves"
-        let moves = moves[1 .. moves.high]
-        log.writeLine($moves)
-        let lastMove = moves[moves.high]
-        discard playMove(g, moveFromLongAlgebric(lastMove))
+      game_started = true
+
+      # Apply ALL moves in sequence
+      if i_moves <= parts.high:
+        let moves = parts[i_moves + 1 .. parts.high]
+        log.writeLine("Applying moves: " & $moves)
+        for moveStr in moves:
+          let move = moveFromLongAlgebric(moveStr)
+          discard playMove(g, move)
+        log.writeLine("Final board:")
         log.writeLine($g.board)
 
     if line.startsWith("go "):
-      var bestMove = g.searchAB(5)
-      echo "bestmove " & $bestMove
-      discard playMove(g, bestMove)
+      let result = g.searchAB(5)
+
+      # Output UCI info line
+      echo "info depth 5 score cp ", result.score, " nodes ", result.nodes
+
+      # Output best move
+      echo "bestmove ", result.bestMove
+
+      # Apply move to internal board
+      discard playMove(g, result.bestMove)
+
+      log.writeLine("Best move: " & $result.bestMove & " (score: " & $result.score & ")")

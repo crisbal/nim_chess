@@ -33,6 +33,11 @@ template source*(m: Move): Position = Position(uint16(m) and SourceMask)
 template target*(m: Move): Position = Position((uint16(m) and TargetMask) shr 6)
 template kind*(m: Move): MoveKind = MoveKind((uint16(m) and FlagMask) shr 12)
 
+proc isCapture*(m: Move): bool {.inline.} =
+  ## Returns true if this move is a capture (including en passant and promotion captures)
+  let k = m.kind
+  k == Captures or k == EpCapture or k >= KnightPromoCapture
+
 proc newMove*(source, target: Position, kind: MoveKind = Quiet): Move =
   Move(uint16(source) or (uint16(target) shl 6) or (uint16(kind) shl 12))
 
