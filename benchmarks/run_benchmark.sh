@@ -19,7 +19,6 @@ CPU=$(sysctl -n machdep.cpu.brand_string 2>/dev/null || lscpu | grep "Model name
 NIM_VERSION=$(nim --version | head -1)
 
 echo "System Information:"
-echo "  Host: $HOSTNAME"
 echo "  OS: $OS $OS_VERSION"
 echo "  CPU: $CPU"
 echo "  Nim: $NIM_VERSION"
@@ -28,14 +27,14 @@ echo ""
 # Compile benchmark
 echo -e "${GREEN}Compiling benchmark (release mode)...${NC}"
 cd "$(dirname "$0")"
-nim c -d:release -o:perft_benchmark --hints:off --warnings:off perft_benchmark.nim
+nim c -d:release --hints:off --warnings:off perft_benchmark.nim
 
 echo ""
 echo -e "${GREEN}Running benchmarks...${NC}"
 echo ""
 
 # Run benchmark and capture output
-./perft_benchmark > /tmp/bench_output.txt
+./build/bin/perft_benchmark > /tmp/bench_output.txt
 
 # Display results
 cat /tmp/bench_output.txt
