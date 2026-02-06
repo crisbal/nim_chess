@@ -653,7 +653,7 @@ proc isStalemated*(game: var Game): bool {.inline.} =
   return
     not isChecked(game, game.turn) and len(availableMoves) == 0
 
-proc score(move: Move, board: Board): int =
+proc score(move: Move, board: Board): int {.inline.} =
   var value = 0
   # prioritize high-value captures
   if type(board[move.target]) != PieceType.none:
@@ -680,7 +680,7 @@ proc sort_moves(moves: var seq[Move], game: Game) =
 
 const CHECKMATE = abs(int(int16.low))
 
-proc quiescence(game: var Game, alpha: int, beta: int, nodes: var int): int =
+proc quiescence(game: var Game, alpha: int, beta: int, nodes: var int, ply: int): int =
   ## Quiescence search: continues searching capture moves until position is quiet.
   ## This prevents the horizon effect where the search stops right after a capture.
   nodes += 1
@@ -699,9 +699,9 @@ proc quiescence(game: var Game, alpha: int, beta: int, nodes: var int): int =
   let allMoves = generateMoves(game)
 
   # If no legal moves, check for checkmate/stalemate
-  if allMoves.len == 0:
+  if len(allMoves) == 0:
     if isChecked(game, game.turn):
-      return -CHECKMATE
+      return -(CHECKMATE - ply)
     else:
       return 0
 
@@ -711,7 +711,7 @@ proc quiescence(game: var Game, alpha: int, beta: int, nodes: var int): int =
       continue
 
     let effect = playMove(game, move)
-    let score = -quiescence(game, -beta, -currAlpha, nodes)
+    let score = -quiescence(game, -beta, -currAlpha, nodes, ply + 1)
     undoMove(game, move, effect)
 
     if score >= beta:
@@ -720,17 +720,17 @@ proc quiescence(game: var Game, alpha: int, beta: int, nodes: var int): int =
 
   return currAlpha
 
-proc evaluateAB*(game: var Game, depth: uint, alpha: int, beta: int, nodes: var int): int =
+proc evaluateAB*(game: var Game, depth: uint, alpha: int, beta: int, nodes: var int, ply: int): int =
   nodes += 1
   var moves = generateMoves(game)
   if len(moves) == 0:
-    if isChecked(game, game.turn): # you are checkmated!
-      return -CHECKMATE
+    if isChecked(game, game.turn):
+      return -(CHECKMATE - ply)
     else: # draw
       return 0
 
   if depth == 0:
-    return quiescence(game, alpha, beta, nodes)
+    return quiescence(game, alpha, beta, nodes, ply)
 
   # sort the moves according to heuristic score
   sort_moves(moves, game)
@@ -738,7 +738,7 @@ proc evaluateAB*(game: var Game, depth: uint, alpha: int, beta: int, nodes: var 
   var currAlpha = alpha
   for move in moves:
     let effect = playMove(game, move)
-    var evaluation = -1 * evaluateAB(game, depth - 1, -beta, -currAlpha, nodes)
+    var evaluation = -1 * evaluateAB(game, depth - 1, -beta, -currAlpha, nodes, ply + 1)
     undoMove(game, move, effect)
     if evaluation >= beta:
       return beta
@@ -763,14 +763,15 @@ proc searchAB*(game: var Game, depth: uint8): SearchResult =
   # always maximize bestScore
   for move in availableMoves:
     let effect = playMove(game, move)
-    var score = -1 * evaluateAB(game, depth - 1, -CHECKMATE, CHECKMATE, nodes)
-    if score == CHECKMATE:
+    var score = -1 * evaluateAB(game, depth - 1, -CHECKMATE, -bestScore, nodes, 1)
+    undoMove(game, move, effect)
+    # Early exit on mate-in-1 (highest possible score)
+    if score == CHECKMATE - 1:
       return SearchResult(
         bestMove: move,
-        score: CHECKMATE,
+        score: score,
         nodes: nodes
       )
-    undoMove(game, move, effect)
     if score > bestScore:
       bestScore = score
       bestMove = move

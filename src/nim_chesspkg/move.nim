@@ -91,7 +91,18 @@ proc moveFromLongAlgebric*(repr: string): Move =
   return newMove(fromSquare, toSquare, kind)
 
 proc `$`*(move: Move): string =
-  return board.toAlgebraic(move.source) & board.toAlgebraic(move.target)
+  result = board.toAlgebraic(move.source) & board.toAlgebraic(move.target)
+  case move.kind
+  of KnightPromotion, KnightPromoCapture:
+    result.add('n')
+  of BishopPromotion, BishopPromoCapture:
+    result.add('b')
+  of RookPromotion, RookPromoCapture:
+    result.add('r')
+  of QueenPromotion, QueenPromoCapture:
+    result.add('q')
+  else:
+    discard
 
 proc `$`*(moves: seq[Move]): string =
   var output = ""
