@@ -294,7 +294,7 @@ proc undoMove*(game: var Game, move: Move, effect: MoveEffect) =
   game.fullmoveNumber = effect.previousFullmoveNumber
 
 proc generatePseudolegalMoves*(game: Game): seq[Move] =
-  var moves: seq[Move] = @[]
+  var moves: seq[Move] = newSeqOfCap[Move](1024)
   for position, piece in game.board:
     if type(piece) == PieceType.none:
       continue
@@ -620,7 +620,7 @@ proc isChecked*(game: Game, color: PieceColor): bool {.inline.} =
 proc generateMoves*(game: var Game): seq[Move] =
   # Generate all legal moves for the current player
   let moves = generatePseudolegalMoves(game)
-  var validMoves: seq[Move] = @[]
+  var validMoves = newSeqOfCap[Move](1024)
   for move in moves:
     if move.kind == KingCastle or move.kind == QueenCastle:
       # Castling moves are only pseudolegal if the king is not in check,
