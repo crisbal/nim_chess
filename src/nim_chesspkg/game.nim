@@ -662,15 +662,21 @@ proc score(move: Move, board: Board): int =
 
   return value
 
-proc sort_moves(moves: seq[Move], game: Game): seq[Move] =
-  # sort the moves according to heuristic score
-  var move_to_score = initTable[Move, int]()
+proc sort_moves(moves: var seq[Move], game: Game) =
+  # sort the moves in-place according to heuristic score
+
+  type MoveAndScore = tuple[move: Move, score: int]
+  var scoredMoves = newSeqOfCap[MoveAndScore](moves.len)
   for move in moves:
-    move_to_score[move] = score(move, game.board)
-  return moves.sorted(
-    proc(m1, m2: Move): int =
-      move_to_score.getOrDefault(m2, 0) - move_to_score.getOrDefault(m1, 0)
+    scoredMoves.add((move: move, score: score(move, game.board)))
+  # Sort by score descending
+  scoredMoves.sort(proc(a, b: MoveAndScore): int =
+    return b.score - a.score
   )
+
+  # overwrite moves with sorted order
+  for i in 0 ..< moves.len:
+    moves[i] = scoredMoves[i].move
 
 const CHECKMATE = abs(int(int16.low))
 
@@ -727,7 +733,7 @@ proc evaluateAB*(game: var Game, depth: uint, alpha: int, beta: int, nodes: var 
     return quiescence(game, alpha, beta, nodes)
 
   # sort the moves according to heuristic score
-  moves = sort_moves(moves, game)
+  sort_moves(moves, game)
 
   var currAlpha = alpha
   for move in moves:
@@ -749,7 +755,7 @@ proc searchAB*(game: var Game, depth: uint8): SearchResult =
       nodes: 0
     )
 
-  availableMoves = sort_moves(availableMoves, game)
+  sort_moves(availableMoves, game)
 
   var nodes = 0
   var bestScore = -CHECKMATE
