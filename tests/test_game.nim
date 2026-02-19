@@ -275,16 +275,15 @@ suite "generateMoves":
     let moves = generateMoves(game)
     check moves.contains(newMove(positionFromAlgebric("e8"), positionFromAlgebric("c8"), QueenCastle))
 
-  # TODO: implement castling check validation
-  # test "castling // can't castle if in check":
-  #   var game = game.fromFen("4k3/4q3/8/8/8/8/8/4K2R w K - 0 1")
-  #   let moves = generateMoves(game)
-  #   check not moves.contains(newMove(positionFromAlgebric("e1"), positionFromAlgebric("g1"), KingCastle))
+  test "castling // can't castle if in check":
+    var game = game.fromFen("4k3/4q3/8/8/8/8/8/4K2R w K - 0 1")
+    let moves = generateMoves(game)
+    check not moves.contains(newMove(positionFromAlgebric("e1"), positionFromAlgebric("g1"), KingCastle))
 
-  # test "castling // can't castle if path under attack":
-  #   var game = game.fromFen("4k3/5q2/8/8/8/8/8/4K2R w K - 0 1")
-  #   let moves = generateMoves(game)
-  #   check not moves.contains(newMove(positionFromAlgebric("e1"), positionFromAlgebric("g1"), KingCastle))
+  test "castling // can't castle if path under attack":
+    var game = game.fromFen("4k3/5q2/8/8/8/8/8/4K2R w K - 0 1")
+    let moves = generateMoves(game)
+    check not moves.contains(newMove(positionFromAlgebric("e1"), positionFromAlgebric("g1"), KingCastle))
 
   test "castling // can't castle if no rights":
     var game = game.fromFen("4k3/8/8/8/8/8/8/4K2R w - - 0 1")

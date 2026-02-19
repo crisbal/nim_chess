@@ -47,6 +47,8 @@ proc moveFromLongAlgebric*(repr: string): Move =
   ## Pawn moves:  <from square>['-'|'x']<to square>[<promoted to>]
   ## Piece symbol: 'N' | 'B' | 'R' | 'Q' | 'K'
   ## Examples: "Ne2-f4", "e2xe4", "e7-e8Q", "e2e4"
+  ## Castling: "e1g1" (white kingside), "e1c1" (white queenside),
+  ##           "e8g8" (black kingside), "e8c8" (black queenside)
 
   var idx = 0
   let s = repr
@@ -70,6 +72,15 @@ proc moveFromLongAlgebric*(repr: string): Move =
   assert idx + 2 <= len(s), "Invalid LAN: missing to square"
   let toSquare = positionFromAlgebric(s[idx .. idx + 1])
   idx += 2
+
+  # Check for castling (king moves 2 squares)
+  # White: e1g1 (kingside), e1c1 (queenside)
+  # Black: e8g8 (kingside), e8c8 (queenside)
+  if s[idx - 4 .. idx - 3] == "e1" or s[idx - 4 .. idx - 3] == "e8":
+    if s[idx - 2 .. idx - 1] == "g1" or s[idx - 2 .. idx - 1] == "g8":
+      return newMove(fromSquare, toSquare, KingCastle)
+    elif s[idx - 2 .. idx - 1] == "c1" or s[idx - 2 .. idx - 1] == "c8":
+      return newMove(fromSquare, toSquare, QueenCastle)
 
   # Check for optional promotion piece
   var kind: MoveKind = if isCapture: Captures else: Quiet

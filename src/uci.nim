@@ -59,10 +59,11 @@ when isMainModule:
         log.writeLine($g.board)
 
     if line.startsWith("go "):
-      let result = g.searchAB(5)
+      const DEPTH = 6
+      let result = g.searchAB(6)
 
       # Output UCI info line
-      echo "info depth 5 score cp ", result.score, " nodes ", result.nodes
+      echo "info depth ", DEPTH, " score cp ", result.score, " nodes ", result.nodes
 
       # Output best move
       echo "bestmove ", result.bestMove

@@ -142,3 +142,27 @@ suite "moveFromLongAlgebric":
     check m.source == positionFromAlgebric("e7")
     check m.target == positionFromAlgebric("e8")
     check m.kind == QueenPromotion
+
+  test "white kingside castling":
+    let m = moveFromLongAlgebric("e1g1")
+    check m.source == positionFromAlgebric("e1")
+    check m.target == positionFromAlgebric("g1")
+    check m.kind == KingCastle
+
+  test "white queenside castling":
+    let m = moveFromLongAlgebric("e1c1")
+    check m.source == positionFromAlgebric("e1")
+    check m.target == positionFromAlgebric("c1")
+    check m.kind == QueenCastle
+
+  test "black kingside castling":
+    let m = moveFromLongAlgebric("e8g8")
+    check m.source == positionFromAlgebric("e8")
+    check m.target == positionFromAlgebric("g8")
+    check m.kind == KingCastle
+
+  test "black queenside castling":
+    let m = moveFromLongAlgebric("e8c8")
+    check m.source == positionFromAlgebric("e8")
+    check m.target == positionFromAlgebric("c8")
+    check m.kind == QueenCastle
