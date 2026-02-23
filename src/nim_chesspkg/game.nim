@@ -25,13 +25,6 @@ type MoveEffect* = object
   previousHalfmoveClock*: int
   previousFullmoveNumber*: int
 
-type TTFlag* = enum
-  Exact = 0      # Score is exact
-  LowerBound = 1 # Score is at least this (beta cutoff)
-  UpperBound = 2 # Score is at most this (alpha cutoff)
-
-type CachedEval* = tuple[depth: uint, score: int, flag: TTFlag]
-
 type SearchResult* = object
   bestMove*: Move
   score*: int      # Score in centipawns (UCI: positive = good for side to move)
@@ -53,7 +46,6 @@ type Game* = object
   # Performance cache
   whiteKingPosition: Position
   blackKingPosition: Position
-  evalCache*: Table[Board, CachedEval]
 
 
 const STARTING_FEN* = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
@@ -97,8 +89,7 @@ proc fromFen*(fen: string): Game =
     halfmoveClock: halfmoveClock,
     fullmoveNumber: fullmoveNumber,
     whiteKingPosition: findKing(game_board, PieceColor.white),
-    blackKingPosition: findKing(game_board, PieceColor.black),
-    evalCache: initTable[Board, CachedEval]()
+    blackKingPosition: findKing(game_board, PieceColor.black)
   )
 
 proc newGame*(): Game =
@@ -665,40 +656,9 @@ proc isStalemated*(game: var Game): bool {.inline.} =
 proc score(move: Move, board: Board): int {.inline.} =
   var value = 0
   # prioritize high-value captures
-  # but also prioritize ANY capture over quiet moves
-  const CAPTURE_BONUS = 500
   if type(board[move.target]) != PieceType.none:
     value =
-      CAPTURE_BONUS + PIECE_VALUES[type(board[move.target])] - PIECE_VALUES[type(board[move.source])]
-
-  # prioritize moving pawns off their starting rank (development)
-  if type(board[move.source]) == PieceType.pawn:
-    let pawnColor = color(board[move.source])
-    let pawnRow = row(move.source)
-    if (pawnColor == PieceColor.white and pawnRow == BOARD_WIDTH - 2) or
-       (pawnColor == PieceColor.black and pawnRow == 1):
-      value += 10
-
-  # prioritize moving pieces out of their starting position (development)
-  if type(board[move.source]) == PieceType.knight:
-    let knightColor = color(board[move.source])
-    let knightRow = row(move.source)
-    let knightCol = column(move.source)
-    if (knightColor == PieceColor.white and knightRow == BOARD_WIDTH - 1 and knightCol in [1, 6]) or
-       (knightColor == PieceColor.black and knightRow == 0 and knightCol in [1, 6]):
-      value += 15
-
-  if type(board[move.source]) == PieceType.bishop:
-    let bishopColor = color(board[move.source])
-    let bishopRow = row(move.source)
-    let bishopCol = column(move.source)
-    if (bishopColor == PieceColor.white and bishopRow == BOARD_WIDTH - 1 and bishopCol in [2, 5]) or
-       (bishopColor == PieceColor.black and bishopRow == 0 and bishopCol in [2, 5]):
-      value += 15
-
-  # prioritize castling moves (king safety)
-  if move.kind == KingCastle or move.kind == QueenCastle:
-    value += 500
+      PIECE_VALUES[type(board[move.target])] - PIECE_VALUES[type(board[move.source])]
 
   return value
 
@@ -762,30 +722,6 @@ proc quiescence(game: var Game, alpha: int, beta: int, nodes: var int, ply: int)
 
 proc evaluateAB*(game: var Game, depth: uint, alpha: int, beta: int, nodes: var int, ply: int): int =
   nodes += 1
-  let originalAlpha = alpha
-  var alpha = alpha
-  var beta = beta
-
-  # Check evaluation cache
-  if game.evalCache.hasKey(game.board):
-    let cached = game.evalCache[game.board]
-    if cached.depth >= depth:
-      let cachedScore = cached.score * sign(game.turn)
-      case cached.flag:
-      of Exact:
-        return cachedScore
-      of LowerBound:
-        if cachedScore >= beta:
-          return cachedScore
-        alpha = max(alpha, cachedScore)
-      of UpperBound:
-        if cachedScore <= alpha:
-          return cachedScore
-        beta = min(beta, cachedScore)
-
-      if alpha >= beta:
-        return cachedScore
-
   var moves = generateMoves(game)
   if len(moves) == 0:
     if isChecked(game, game.turn):
@@ -794,13 +730,7 @@ proc evaluateAB*(game: var Game, depth: uint, alpha: int, beta: int, nodes: var 
       return 0
 
   if depth == 0:
-    let qScore = quiescence(game, alpha, beta, nodes, ply)
-    # Determine flag for quiescence result
-    let flag = if qScore >= beta: LowerBound
-               elif qScore <= originalAlpha: UpperBound
-               else: Exact
-    game.evalCache[game.board] = (depth: 0.uint, score: qScore * sign(game.turn), flag: flag)
-    return qScore
+    return quiescence(game, alpha, beta, nodes, ply)
 
   # sort the moves according to heuristic score
   sort_moves(moves, game)
@@ -811,20 +741,11 @@ proc evaluateAB*(game: var Game, depth: uint, alpha: int, beta: int, nodes: var 
     var evaluation = -1 * evaluateAB(game, depth - 1, -beta, -currAlpha, nodes, ply + 1)
     undoMove(game, move, effect)
     if evaluation >= beta:
-      # Store lower bound (score is at least beta)
-      game.evalCache[game.board] = (depth: depth, score: evaluation * sign(game.turn), flag: LowerBound)
       return beta
     currAlpha = max(currAlpha, evaluation)
-
-  # Determine flag: if currAlpha improved, it's exact; otherwise upper bound
-  let flag = if currAlpha > originalAlpha: Exact else: UpperBound
-  game.evalCache[game.board] = (depth: depth, score: currAlpha * sign(game.turn), flag: flag)
   return currAlpha
 
 proc searchAB*(game: var Game, depth: uint8): SearchResult =
-  # Clear cache to avoid stale entries
-  game.evalCache.clear()
-
   var availableMoves = generateMoves(game)
 
   if availableMoves.len == 0:
@@ -839,14 +760,10 @@ proc searchAB*(game: var Game, depth: uint8): SearchResult =
   var nodes = 0
   var bestScore = -CHECKMATE
   var bestMove = availableMoves[0]
-
-  # Use full window at root to get exact scores for each move.
-  # This is important for detecting forced mates - with a narrow window,
-  # moves that lead to getting mated can appear equal to other bad moves
-  # due to beta cutoff returning the bound instead of the true (worse) score.
+  # always maximize bestScore
   for move in availableMoves:
     let effect = playMove(game, move)
-    var score = -1 * evaluateAB(game, depth - 1, -CHECKMATE, CHECKMATE, nodes, 1)
+    var score = -1 * evaluateAB(game, depth - 1, -CHECKMATE, -bestScore, nodes, 1)
     undoMove(game, move, effect)
     # Early exit on mate-in-1 (highest possible score)
     if score == CHECKMATE - 1:
